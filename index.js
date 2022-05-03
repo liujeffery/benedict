@@ -1,12 +1,10 @@
 const { Client, Intents, version, MessageReaction} = require("discord.js");
-const config = require("./config.json")
 const { Translate } = require("@google-cloud/translate").v2;
 const textToSpeech = require("@google-cloud/text-to-speech");
 const speech = require("@google-cloud/speech");
-const util = require("util");
 const axios = require("axios");
 const ytdl = require("ytdl-core");
-const yts = require("yt-search");
+
 require("dotenv").config();
 
 const projectId = "angular-unison-338316"
