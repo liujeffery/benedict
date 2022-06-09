@@ -7,6 +7,7 @@ const ytdl = require("ytdl-core");
 const ytpl = require("ytpl");
 const fs = require("fs");
 const Ffmpeg = require("fluent-ffmpeg");
+const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const events = require("events").EventEmitter;
 require("dotenv").config();
 
@@ -203,6 +204,7 @@ async function listenStream(connection, message) {
         .on("error", console.error);
 
     const command = Ffmpeg(readableStream)
+        .setFfmpegPath(ffmpegPath)
         .inputOptions([
             "-ar 48000",
             "-ac 2",
