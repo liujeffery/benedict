@@ -217,23 +217,17 @@ async function listenStream(connection, message) {
         })
         .on("end", async () =>{
             if(listenOn[message.member.id]){
-                try{
-                    const request = {
-                        config: {
-                            encoding: "LINEAR16",
-                            sampleRateHertz: 48000,
-                            languageCode: "en-US"
-                        },
-                        audio: {
-                            content: fs.readFileSync("ffmpeg_" + message.member.user.username + ".wav").toString("base64")
-                        }
-                    };
-                }
-                catch (error){
-                    message.channel.send("Error trying to read audio from Discord.");
-                    console.log(error);
-                }
-                
+                const request = {
+                    config: {
+                        encoding: "LINEAR16",
+                        sampleRateHertz: 48000,
+                        languageCode: "en-US"
+                    },
+                    audio: {
+                        content: fs.readFileSync("ffmpeg_" + message.member.user.username + ".wav").toString("base64")
+                    }
+                };
+
                 const [response] = await stt.recognize(request);
                 const transcription = response.results
                     .map(result => result.alternatives[0].transcript)
@@ -406,6 +400,8 @@ async function listenStream(connection, message) {
                             const date = new Date();
                             const [day, month, year] = [date.getDate(), date.getMonth(), date.getFullYear()];
                             var [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
+                            if (seconds < 10)
+                                seconds = "0" + seconds;
                             if (minutes < 10)
                                 minutes = "0" + minutes;
                             if (hour < 10)
@@ -813,6 +809,13 @@ client.on("message", async (message) => {
                 const [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
                 const fullDate = day + "/" + month + "/" + year + ", " + hour + ":" + minutes + ":" + seconds;
 
+                if (seconds < 10)
+                    seconds = "0" + seconds;
+                if (minutes < 10)
+                    minutes = "0" + minutes;
+                if (hour < 10)
+                    hour = "0" + hour;
+                    
                 try{
                     fs.writeFileSync("transcript_" + message.guild.name + ".txt", "Transcript started at " + fullDate + ".\n", {flag: "a"});
                 }
@@ -824,8 +827,10 @@ client.on("message", async (message) => {
                 setupConnection(connection, message);
                 message.channel.send("Starting transcription.");
                 transcribeOn = true;
-                if (!listenOn[message.member.id])
+                if (!listenOn[message.member.id]){
+                    listenOn[message.member.id] = true;
                     listenStream(connection, message);
+                }
             });
         }
         catch (error){
