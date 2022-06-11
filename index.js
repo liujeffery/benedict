@@ -116,7 +116,7 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            quality: "250"
+            quality: "251"
         }));
     }
     catch (error){
