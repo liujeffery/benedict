@@ -806,8 +806,7 @@ client.on("message", async (message) => {
             message.member.voice.channel.join().then((connection) =>{
                 const date = new Date();
                 const [day, month, year] = [date.getDate(), date.getMonth(), date.getFullYear()];
-                const [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
-                const fullDate = day + "/" + month + "/" + year + ", " + hour + ":" + minutes + ":" + seconds;
+                var [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
 
                 if (seconds < 10)
                     seconds = "0" + seconds;
@@ -815,6 +814,7 @@ client.on("message", async (message) => {
                     minutes = "0" + minutes;
                 if (hour < 10)
                     hour = "0" + hour;
+                const fullDate = day + "/" + month + "/" + year + ", " + hour + ":" + minutes + ":" + seconds;
                     
                 try{
                     fs.writeFileSync("transcript_" + message.guild.name + ".txt", "Transcript started at " + fullDate + ".\n", {flag: "a"});
@@ -831,6 +831,7 @@ client.on("message", async (message) => {
                     listenOn[message.member.id] = true;
                     listenStream(connection, message);
                 }
+                console.log("test");
             });
         }
         catch (error){
