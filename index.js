@@ -116,7 +116,7 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            quality: "251"
+            quality: "250"
         }));
     }
     catch (error){
@@ -453,6 +453,9 @@ async function listenStream(connection, message) {
                         const date = new Date();
                         const member = message.member.user.username;
                         var [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
+
+                        if (seconds < 10)
+                            seconds = "0" + seconds;
                         if (minutes < 10)
                             minutes = "0" + minutes;
                         if (hour < 10)
@@ -831,7 +834,6 @@ client.on("message", async (message) => {
                     listenOn[message.member.id] = true;
                     listenStream(connection, message);
                 }
-                console.log("test");
             });
         }
         catch (error){
