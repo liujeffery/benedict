@@ -486,6 +486,7 @@ async function listenStream(connection, message) {
 
 //adds emitter event if bot ever disconnects from server
 async function setupConnection(connection, message){
+    emitter.setMaxListeners(1);
     connection.on("disconnect", () => {
         emitter.emit("off", message);
     });
