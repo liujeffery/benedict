@@ -116,7 +116,6 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            quality: "250"
         }));
     }
     catch (error){
@@ -506,6 +505,8 @@ client.on("message", async (message) => {
     //test ping
     if (keyword == "test"){
         const server = servers[message.guild.id];
+
+        
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
@@ -741,7 +742,7 @@ client.on("message", async (message) => {
     }
     else if (keyword == "skip"){
         const server = servers[message.guild.id];
-        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher){
+        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher && server.dispatcher._writableState.writing){
             try{
                 server.dispatcher.end();
                 message.channel.send("Skipped!");
