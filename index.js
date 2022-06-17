@@ -252,7 +252,7 @@ async function listenStream(connection, message) {
                     }
                     else if (keyword == "disconnect" || keyword == "leave"){
                         try{
-                            if(message.member.voice.channel.members.get("829383202916532314"))
+                            if(!message.member.voice.channel.members.get("829383202916532314"))
                                 message.channel.send("I am not in the voice channel!")
                             else{
                                 message.member.voice.channel.leave();
@@ -516,7 +516,7 @@ client.on("message", async (message) => {
         emitter.emit("off", message);
     }
     else if (keyword == "disconnect" || keyword == "leave"){
-        if(message.member.voice.channel.members.get("829383202916532314")){
+        if(!message.member.voice.channel.members.get("829383202916532314")){
             message.channel.send("I am not in the voice channel!");
             return;
         }
@@ -544,7 +544,7 @@ client.on("message", async (message) => {
             "?translate (language to translate to) (content to translate) to translate text.\n" +
             "?tts (content) to make bot join channel and read content out loud.\n" +
             "?listen to make bot join and listen to you.\n" +
-            "?ignore to make bot stop listening to you.\n" +
+            "?ignore to make bot stop listening to you.\n\n" +
             "NOTE: The bot can listen to multiple people at once, but every person must type ?listen.\n\n" +
             "?transcribe to make bot join and start transcribing speech of listenable participants.\n" +
             "?complete to stop transcription and upload text file.\n" +
