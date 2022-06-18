@@ -116,6 +116,7 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
+            quality: "140"
         }));
     }
     catch (error){
@@ -505,7 +506,6 @@ client.on("message", async (message) => {
     //test ping
     if (keyword == "test"){
         const server = servers[message.guild.id];
-
         
     }
     //if transcribing, stops transcription and sends text file
