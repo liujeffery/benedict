@@ -506,6 +506,10 @@ client.on("message", async (message) => {
     //test ping
     if (keyword == "test"){
         const server = servers[message.guild.id];
+
+        axios.get("https://api.genius.com/search?q=Kendrick%20Lamar&access_token=T2kL1nkiM9-jQN7Lbfg5KuSqjKJ3jFkTEReOXP5Jj1TDg-wLjtDb_CUqLq4CwK4A").then(response =>{
+            console.log(response)
+        })
         
     }
     //if transcribing, stops transcription and sends text file
