@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@discordjs/builders": "^0.11.0",
+    "@discordjs/opus": "^0.5.3",
     "@discordjs/rest": "^0.2.0-canary.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@google-cloud/speech": "^4.10.2",
@@ -22,7 +23,6 @@
     "dotenv": "^12.0.3",
     "ffmpeg-static": "^4.4.1",
     "fluent-ffmpeg": "^2.1.2",
-    "opusscript": "^0.0.8",
     "ytdl-core": "^4.11.0",
     "ytpl": "^2.3.0"
   }
