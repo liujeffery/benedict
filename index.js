@@ -83,7 +83,7 @@ async function texttomp3(text, message, languageCode) {
                 message.member.voice.channel.join().then((connection) => {
                     setupConnection(connection, message);
                     server.dispatcher = connection.play("output_" + message.guild.name + ".mp3");
-                    server.dispatcher.setVolume(0.05);
+                    server.dispatcher.setVolume(0.08);
 
                     //statement runs once mp3 file is finished  
                     //for some reason ffmpeg ends it early, so manual delay of 1 second is set
@@ -127,7 +127,7 @@ function play(connection, message) {
         message.channel.send("Error playing music.");
         console.log(error);
     };
-    server.dispatcher.setVolume(0.05);
+    server.dispatcher.setVolume(0.08);
     //shift removes the first element in the array
     message.channel.send("Now playing: **" + server.queueString[0] + "**.");
 
