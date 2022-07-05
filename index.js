@@ -117,11 +117,10 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            quality: "140",
             opusEncoded: false,
             fmt: "mp3",
             encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"]
-        }));
+        }), {type: "unknown"});
     }
     catch (error){
         message.channel.send("Error playing music.");
@@ -640,7 +639,7 @@ client.on("message", async (message) => {
             "?disconnect/leave to make bot leave voice channel.\n\n" +
             "VOICE COMMANDS:\n" +
             "Keyword to activate bot is Benedict.\n" +
-            "play/queue/skip/remove/search/weather/ignore/transcribe/complete/disconnect are all also voice activated commands.```";
+            "play/queue/skip/lyrics/remove/search/weather/ignore/transcribe/complete/disconnect are all also voice activated commands.```";
 
         channel.send(helpMessage);
     }
