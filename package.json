@@ -19,7 +19,6 @@
     "@google-cloud/translate": "^6.3.1",
     "axios": "^0.24.0",
     "bufferutil": "^4.0.6",
-    "cheerio": "^1.0.0-rc.11",
     "discord-api-types": "^0.26.1",
     "discord.js": "^12.5.3",
     "dotenv": "^12.0.3",

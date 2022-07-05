@@ -64,7 +64,8 @@ async function texttomp3(text, message, languageCode) {
         if (!servers[message.guild.id]){
             servers[message.guild.id] = {
                 queue: [],
-                queueString: []
+                queueString: [],
+                currentSong: ""
             };
         }
         const server = servers[message.guild.id];
@@ -116,7 +117,10 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            quality: "140"
+            quality: "140",
+            opusEncoded: false,
+            fmt: "mp3",
+            encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"]
         }));
     }
     catch (error){
@@ -128,7 +132,7 @@ function play(connection, message) {
     message.channel.send("Now playing: **" + server.queueString[0] + "**.");
 
     server.queue.shift();
-    server.queueString.shift();
+    server.currentSong = server.queueString.shift();
     //statement runs once mp3 file is finished  
     //for some reason ffmpeg ends it early, so manual delay of 1 second is set
     try{
@@ -142,6 +146,86 @@ function play(connection, message) {
     }
     catch (error){
         message.channel.send("Error playing music.");
+        console.log(error);
+    }
+}
+
+async function findLyrics(tokens, message){
+    const server = servers[message.guild.id];
+    var search = "";
+
+    if (!tokens[0]){
+        if (!server || !server.currentSong){
+            message.channel.send("No song is currently playing!");
+            return;
+        }
+        search = server.currentSong;
+    }
+    else{
+        search = tokens.join(" ");
+    }
+    search = search + " lyrics";
+
+    try{
+        var found = false;
+        await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
+            for (let i = 0; i < response.data.items.length; i = i + 1){
+                if (response.data.items[i].displayLink == "www.azlyrics.com"){
+                    found = true;
+                    axios.get(response.data.items[i].link).then(lyrics => {
+                        var raw = lyrics.data.split("\n");
+                
+                        for (let j = 0;j < raw.length; j = j + 1){
+                            if (raw[j].trim() == "<div>"){
+                                raw = raw.slice(j + 1);
+                                raw = raw.slice(1, raw.findIndex(line => {
+                                    return line.trim() == "</div>"
+                                }));
+                                break;
+                            }
+                        }
+
+                        raw = raw.join("\n");
+                        raw = raw.replace(/<\/p>/gm, "\n");
+                        raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
+
+                        message.channel.send("```" + raw + "```");
+                        return;
+                    });
+                }
+                
+                else if (response.data.items[i].displayLink == "www.lyrical-nonsense.com"){
+                    found = true;
+                    axios.get(response.data.items[i].link).then(async lyrics => {
+                        var raw = lyrics.data.split("\n");
+                
+                        for (let j = 0;j < raw.length; j = j + 1){
+                            if (raw[j].trim() == "<div class=\"olyrictext\">"){
+                                raw = raw.slice(j + 1);
+                                raw[0] = raw[0].trim();
+                                raw = raw.slice(0, raw.findIndex(line => {
+                                    return line.trim() == "</div>"
+                                }))
+                                break;
+                            }
+                        }
+                        
+                        raw = raw.join("\n");
+                        raw = raw.replace(/<\/p>/gm, "\n");
+                        raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
+                        raw = raw.substring(0, raw.length - 1);
+                        
+                        message.channel.send("```" + raw + "```");
+                        return;
+                    });
+                }
+            }
+        });
+        if (!found)
+            message.channel.send("Could not find lyrics!")
+    }
+    catch (error){
+        message.channel.send("Error searching for lyrics.");
         console.log(error);
     }
 }
@@ -271,6 +355,9 @@ async function listenStream(connection, message) {
                             listenOn[message.member.id] = false;
                             message.channel.send("Stopped listening to **" + message.member.user.username + "**.");
                         }
+                    }
+                    else if (keyword == "lyrics"){
+                        findLyrics(tokens, message);
                     }
                     else if(keyword == "play"){
                         if (!tokens[0]){
@@ -505,12 +592,7 @@ client.on("message", async (message) => {
 
     //test ping
     if (keyword == "test"){
-        const server = servers[message.guild.id];
-
-        axios.get("https://api.genius.com/search?q=Kendrick%20Lamar&access_token=T2kL1nkiM9-jQN7Lbfg5KuSqjKJ3jFkTEReOXP5Jj1TDg-wLjtDb_CUqLq4CwK4A").then(response =>{
-            console.log(response)
-        })
-        
+        const server = servers[message.guild.id];        
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
@@ -541,6 +623,8 @@ client.on("message", async (message) => {
             "?play/?p (video link/playlist link/search query) to play a song.\n" +
             "?queue/?q to check on the queue.\n" +
             "?skip to skip the current song.\n" + 
+            "?lyrics to get the lyrics for the current song.\n" +
+            "?lyrics (search query) to get lyrics from search.\n" +
             "?remove (number or \"last\") to remove a song in the queue at a specific place.\n\n" +
             "?search (search query) to find definitions/descriptions on Google.\n" +
             "?ytsearch (search query) to search for videos on Youtube.\n" +
@@ -576,7 +660,8 @@ client.on("message", async (message) => {
         if (!servers[message.guild.id]){
             servers[message.guild.id] = {
                 queue: [],
-                queueString: []
+                queueString: [],
+                currentSong: ""
             };
         }
         try{
@@ -596,6 +681,9 @@ client.on("message", async (message) => {
             console.log(error);
         }
     }
+    else if (keyword == "lyrics" || keyword == "l"){
+        findLyrics(tokens, message);
+    }
     //format of play is ?play youtubeLink
     else if (keyword == "play" || keyword == "p") {
         //must have something after and user must be in voice channel
@@ -612,7 +700,8 @@ client.on("message", async (message) => {
         if (!servers[message.guild.id]){
             servers[message.guild.id] = {
                 queue: [],
-                queueString: []
+                queueString: [],
+                currentSong: ""
             };
         }
 
@@ -802,7 +891,8 @@ client.on("message", async (message) => {
         if (!servers[message.guild.id]){
             servers[message.guild.id] = {
                 queue: [],
-                queueString: []
+                queueString: [],
+                currentSong: ""
             };
         }
         
