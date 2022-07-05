@@ -188,8 +188,8 @@ async function findLyrics(tokens, message){
                         raw = raw.replace(/<\/p>/gm, "\n");
                         raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
 
-                        if (raw.length > 3000){
-                            raw = raw.substring(0, 3000);
+                        if (raw.length > 1990){
+                            raw = raw.substring(0, 1990);
                         }
 
                         message.channel.send("```" + raw + "```");
@@ -218,8 +218,8 @@ async function findLyrics(tokens, message){
                         raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
                         raw = raw.substring(0, raw.length - 1);
 
-                        if (raw.length > 3000){
-                            raw = raw.substring(0, 3000);
+                        if (raw.length > 1990){
+                            raw = raw.substring(0, 1990);
                         }
                         
                         message.channel.send("```" + raw + "```");
