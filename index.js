@@ -197,7 +197,7 @@ async function findLyrics(tokens, message){
                             raw = raw.substring(0, 1990);
                         }
                         
-                        message.channel.send("```" + raw + "```");
+                        await message.channel.send("```" + raw + "```");
                         return;
                     });
                 }
@@ -209,7 +209,7 @@ async function findLyrics(tokens, message){
                 for (let i = 0; i < response.data.items.length; i = i + 1){
                     if (response.data.items[i].displayLink == "www.musixmatch.com"){
                         found = true;
-                        axios.get(response.data.items[i].link).then(lyrics => {
+                        axios.get(response.data.items[i].link).then(async lyrics => {
                             var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
                             raw = raw.replaceAll("′", "'")
                             raw = raw.replaceAll("\\n", "\n")
@@ -218,7 +218,7 @@ async function findLyrics(tokens, message){
                                 raw = raw.substring(0, 1990);
                             }
 
-                            message.channel.send("```" + raw + "```");
+                            await message.channel.send("```" + raw + "```");
                             return;
                         });
                     }
