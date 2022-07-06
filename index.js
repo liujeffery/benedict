@@ -166,29 +166,12 @@ async function findLyrics(tokens, message){
     else{
         search = tokens.join(" ");
     }
-    search = search + " lyrical nonsense musixmatch";
 
     try{
         var found = false;
         await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
             for (let i = 0; i < response.data.items.length; i = i + 1){
-                if (response.data.items[i].displayLink == "www.musixmatch.com"){
-                    found = true;
-                    axios.get(response.data.items[i].link).then(lyrics => {
-                        var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
-                        raw = raw.replaceAll("′", "'")
-                        raw = raw.replaceAll("\\n", "\n")
-
-                        if (raw.length > 1990){
-                            raw = raw.substring(0, 1990);
-                        }
-
-                        message.channel.send("```" + raw + "```");
-                        return;
-                    });
-                }
-                
-                else if (response.data.items[i].displayLink == "www.lyrical-nonsense.com"){
+                if (response.data.items[i].displayLink == "www.lyrical-nonsense.com"){
                     found = true;
                     axios.get(response.data.items[i].link).then(async lyrics => {
                         var raw = lyrics.data.split("\n");
@@ -219,6 +202,26 @@ async function findLyrics(tokens, message){
                 }
             }
         });
+        if (!found){
+            search = search + "musixmatch";
+            await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
+                if (response.data.items[i].displayLink == "www.musixmatch.com"){
+                    found = true;
+                    axios.get(response.data.items[i].link).then(lyrics => {
+                        var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
+                        raw = raw.replaceAll("′", "'")
+                        raw = raw.replaceAll("\\n", "\n")
+
+                        if (raw.length > 1990){
+                            raw = raw.substring(0, 1990);
+                        }
+
+                        message.channel.send("```" + raw + "```");
+                        return;
+                    });
+                }
+            });
+        }
         if (!found)
             message.channel.send("Could not find lyrics!")
     }
