@@ -166,6 +166,7 @@ async function findLyrics(tokens, message){
     else{
         search = tokens.join(" ");
     }
+    search = search + " lyrics";
 
     try{
         var found = false;
@@ -203,7 +204,7 @@ async function findLyrics(tokens, message){
             }
         });
         if (!found){
-            search = search + "musixmatch";
+            search = search + " musixmatch";
             await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
                 if (response.data.items[i].displayLink == "www.musixmatch.com"){
                     found = true;
