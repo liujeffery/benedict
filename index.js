@@ -170,11 +170,11 @@ async function findLyrics(tokens, message){
 
     try{
         var found = false;
-        await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
+        await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(async response => {
             for (let i = 0; i < response.data.items.length; i = i + 1){
                 if (response.data.items[i].displayLink == "www.lyrical-nonsense.com"){
                     found = true;
-                    axios.get(response.data.items[i].link).then(async lyrics => {
+                    await axios.get(response.data.items[i].link).then(async lyrics => {
                         var raw = lyrics.data.split("\n");
                 
                         for (let j = 0;j < raw.length; j = j + 1){
@@ -198,18 +198,18 @@ async function findLyrics(tokens, message){
                         }
                         
                         await message.channel.send("```" + raw + "```");
-                        return;
                     });
+                    break;
                 }
             }
         });
         if (!found){
             search = search + " musixmatch";
-            await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
+            await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(async response => {
                 for (let i = 0; i < response.data.items.length; i = i + 1){
                     if (response.data.items[i].displayLink == "www.musixmatch.com"){
                         found = true;
-                        axios.get(response.data.items[i].link).then(async lyrics => {
+                        await axios.get(response.data.items[i].link).then(async lyrics => {
                             var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
                             raw = raw.replaceAll("′", "'")
                             raw = raw.replaceAll("\\n", "\n")
@@ -219,8 +219,8 @@ async function findLyrics(tokens, message){
                             }
 
                             await message.channel.send("```" + raw + "```");
-                            return;
                         });
+                        break;
                     }
                 }
             });
