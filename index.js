@@ -140,6 +140,9 @@ function play(connection, message) {
             if (server.queue[0]) {
                 play(connection, message);
             }
+            else{
+                message.member.voice.channel.leave();
+            }
         }, 1000)
         });
     }
@@ -163,30 +166,18 @@ async function findLyrics(tokens, message){
     else{
         search = tokens.join(" ");
     }
-    search = search + " lyrics";
+    search = search + " lyrical nonsense musixmatch";
 
     try{
         var found = false;
         await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(response => {
             for (let i = 0; i < response.data.items.length; i = i + 1){
-                if (response.data.items[i].displayLink == "www.azlyrics.com"){
+                if (response.data.items[i].displayLink == "www.musixmatch.com"){
                     found = true;
                     axios.get(response.data.items[i].link).then(lyrics => {
-                        var raw = lyrics.data.split("\n");
-                
-                        for (let j = 0;j < raw.length; j = j + 1){
-                            if (raw[j].trim() == "<div>"){
-                                raw = raw.slice(j + 1);
-                                raw = raw.slice(1, raw.findIndex(line => {
-                                    return line.trim() == "</div>"
-                                }));
-                                break;
-                            }
-                        }
-
-                        raw = raw.join("\n");
-                        raw = raw.replace(/<\/p>/gm, "\n");
-                        raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
+                        var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
+                        raw = raw.replaceAll("′", "'")
+                        raw = raw.replaceAll("\\n", "\n")
 
                         if (raw.length > 1990){
                             raw = raw.substring(0, 1990);
