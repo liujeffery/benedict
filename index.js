@@ -9,6 +9,7 @@ const fs = require("fs");
 const Ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const events = require("events").EventEmitter;
+const lyricsFinder = require("lyrics-finder");
 require("dotenv").config();
 
 const projectId = "angular-unison-338316"
@@ -163,70 +164,20 @@ async function findLyrics(tokens, message){
         }
         search = server.currentSong;
     }
-    else{
+    else
         search = tokens.join(" ");
-    }
-    search = search + " lyrics";
 
     try{
-        var found = false;
-        await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(async response => {
-            for (let i = 0; i < response.data.items.length; i = i + 1){
-                if (response.data.items[i].displayLink == "www.lyrical-nonsense.com"){
-                    found = true;
-                    await axios.get(response.data.items[i].link).then(async lyrics => {
-                        var raw = lyrics.data.split("\n");
-                
-                        for (let j = 0;j < raw.length; j = j + 1){
-                            if (raw[j].trim() == "<div class=\"olyrictext\">"){
-                                raw = raw.slice(j + 1);
-                                raw[0] = raw[0].trim();
-                                raw = raw.slice(0, raw.findIndex(line => {
-                                    return line.trim() == "</div>"
-                                }))
-                                break;
-                            }
-                        }
-                        
-                        raw = raw.join("\n");
-                        raw = raw.replace(/<\/p>/gm, "\n");
-                        raw = raw.replace(/<br>|<br\/>|<p>|<i>|<\/i>|<b>|<\/b>/gm, "");
-                        raw = raw.substring(0, raw.length - 1);
-
-                        if (raw.length > 1990){
-                            raw = raw.substring(0, 1990);
-                        }
-                        
-                        await message.channel.send("```" + raw + "```");
-                    });
-                    break;
-                }
+        const response = await lyrics(search, "");
+        if (response){
+            if (raw.length > 1994){
+                raw = raw.substring(0, 1994);
             }
-        });
-        if (!found){
-            search = search + " musixmatch";
-            await axios.get("https://www.googleapis.com/customsearch/v1?key="+ process.env.GOOGLE_KEY+"&cx=8b3bf51ca3d97adb5&num=10&q=" + encodeURI(search)).then(async response => {
-                for (let i = 0; i < response.data.items.length; i = i + 1){
-                    if (response.data.items[i].displayLink == "www.musixmatch.com"){
-                        found = true;
-                        await axios.get(response.data.items[i].link).then(async lyrics => {
-                            var raw = lyrics.data.replace(/[^]*"body":"(.*)","language"[\s\S]*/, "$1");
-                            raw = raw.replaceAll("′", "'")
-                            raw = raw.replaceAll("\\n", "\n")
-
-                            if (raw.length > 1990){
-                                raw = raw.substring(0, 1990);
-                            }
-
-                            await message.channel.send("```" + raw + "```");
-                        });
-                        break;
-                    }
-                }
-            });
+            message.channel.send("```" + raw + "```");
         }
-        if (!found)
-            message.channel.send("Could not find lyrics!")
+        else
+            message.channel.send("Could not find lyrics!");
+        
     }
     catch (error){
         message.channel.send("Error searching for lyrics.");
