@@ -168,12 +168,12 @@ async function findLyrics(tokens, message){
         search = tokens.join(" ");
 
     try{
-        const response = await lyrics(search, "");
+        const response = await lyricsFinder(search, "");
         if (response){
-            if (raw.length > 1994){
-                raw = raw.substring(0, 1994);
+            if (response.length > 1994){
+                response = response.substring(0, 1994);
             }
-            message.channel.send("```" + raw + "```");
+            message.channel.send("```" + response + "```");
         }
         else
             message.channel.send("Could not find lyrics!");
