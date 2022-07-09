@@ -305,7 +305,7 @@ async function listenStream(connection, message, member) {
                         if (!listenOn[message.member.id])
                             message.channel.send("Bot is already ignoring you!");
                         else{
-                            listenOn[message.member.id] = false;
+                            listenOn[mesP534sage.member.id] = false;
                             message.channel.send("Stopped listening to **" + message.member.user.username + "**.");
                         }
                     }
@@ -531,7 +531,7 @@ async function listenStream(connection, message, member) {
                     message.channel.send("Error deleting audio file.");
                     console.log(error);
                 }
-                listenStream(connection, message. member);
+                listenStream(connection, message, member);
             }
         })
         .save("ffmpeg_" + message.member.user.username + ".wav");
