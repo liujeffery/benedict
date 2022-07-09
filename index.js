@@ -272,8 +272,6 @@ async function listenStream(connection, message) {
                     .map(result => result.alternatives[0].transcript)
                     .join("\n");
 
-                console.log("Transcription: ", transcription);
-
                 const server = servers[message.guild.id]; 
                 const tokens = transcription.trim().split(" ");
                 var keyword = tokens.shift().toLowerCase();
