@@ -238,8 +238,8 @@ function checkUserChannelValid(message){
 }
 
 //function to listen to users if they type >listen
-async function listenStream(connection, message) {
-    const readableStream = connection.receiver.createStream(message.member, {mode: "pcm"})
+async function listenStream(connection, message, member) {
+    const readableStream = connection.receiver.createStream(member, {mode: "pcm"})
         .on("error", console.error);
 
     const command = Ffmpeg(readableStream)
@@ -255,7 +255,7 @@ async function listenStream(connection, message) {
             console.log(error);
         })
         .on("end", async () =>{
-            if(listenOn[message.member.id]){
+            if(listenOn[member.id]){
                 const request = {
                     config: {
                         encoding: "LINEAR16",
@@ -263,7 +263,7 @@ async function listenStream(connection, message) {
                         languageCode: "en-US"
                     },
                     audio: {
-                        content: fs.readFileSync("ffmpeg_" + message.member.user.username + ".wav").toString("base64")
+                        content: fs.readFileSync("ffmpeg_" + member.user.username + ".wav").toString("base64")
                     }
                 };
 
@@ -456,8 +456,21 @@ async function listenStream(connection, message) {
                                 message.channel.send("Error starting transcription.");
                                 console.log(error);
                             }
-                            message.channel.send("Starting transcription.");
-                            transcribeOn = true;
+                            try{
+                                message.channel.send("Starting transcription.");
+                                transcribeOn = true;
+                                async function manageListens(value, key){
+                                    if (!listenOn[key]){
+                                        listenOn[key] = true;
+                                        listenStream(connection, message, value);
+                                    }
+                                }
+                                message.member.voice.channel.members.forEach(manageListens);
+                            }
+                            catch (error){
+                                message.channel.send("Error listening to members.");
+                                console.log(error);
+                            }
                         }
                     }
                     else if (keyword == "weather"){
@@ -512,13 +525,13 @@ async function listenStream(connection, message) {
                     }
                 }
                 try{
-                    fs.unlinkSync("ffmpeg_" + message.member.user.username + ".wav");
+                    fs.unlinkSync("ffmpeg_" + member.user.username + ".wav");
                 }
                 catch (error){
                     message.channel.send("Error deleting audio file.");
                     console.log(error);
                 }
-                listenStream(connection, message);
+                listenStream(connection, message. member);
             }
         })
         .save("ffmpeg_" + message.member.user.username + ".wav");
@@ -526,7 +539,7 @@ async function listenStream(connection, message) {
 
 //adds emitter event if bot ever disconnects from server
 async function setupConnection(connection, message){
-    emitter.setMaxListeners(1);
+    connection.setMaxListeners(1);
     connection.on("disconnect", () => {
         emitter.emit("off", message);
     });
@@ -545,7 +558,8 @@ client.on("message", async (message) => {
 
     //test ping
     if (keyword == "test"){
-        const server = servers[message.guild.id];        
+        const server = servers[message.guild.id]; 
+
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
@@ -585,10 +599,9 @@ client.on("message", async (message) => {
             "?timer (hours minutes seconds) to set a timer for the specified hours, minutes, and seconds.\n\n" +
             "?translate (language to translate to) (content to translate) to translate text.\n" +
             "?tts (content) to make bot join channel and read content out loud.\n" +
-            "?listen to make bot join and listen to you.\n" +
+            "?listen to make bot join and listen to ALL members.\n" +
             "?ignore to make bot stop listening to you.\n\n" +
-            "NOTE: The bot can listen to multiple people at once, but every person must type ?listen.\n\n" +
-            "?transcribe to make bot join and start transcribing speech of listenable participants.\n" +
+            "?transcribe to make bot join and start transcribing speech of ALL participants.\n" +
             "?complete to stop transcription and upload text file.\n" +
             "?disconnect/leave to make bot leave voice channel.\n\n" +
             "VOICE COMMANDS:\n" +
@@ -618,15 +631,17 @@ client.on("message", async (message) => {
             };
         }
         try{
-            if (listenOn[message.member.id]){
-                message.channel.send("Already listening to **" + message.member.user.username + "**.");
-                return;
-            }
             message.member.voice.channel.join().then((connection) =>{
                 setupConnection(connection, message);
-                message.channel.send("Now listening to **" + message.member.user.username + "**.");
-                listenOn[message.member.id] = true;
-                listenStream(connection, message);
+                async function manageListens(value, key){
+                    if (!listenOn[key]){
+                        listenOn[key] = true;
+                        listenStream(connection, message, value);
+                    }
+                }
+                message.member.voice.channel.members.forEach(manageListens);
+
+                message.channel.send("Now listening to everyone in **" + message.member.voice.channel.name + "**.");
             });
         }
         catch (error){
@@ -879,10 +894,13 @@ client.on("message", async (message) => {
                 setupConnection(connection, message);
                 message.channel.send("Starting transcription.");
                 transcribeOn = true;
-                if (!listenOn[message.member.id]){
-                    listenOn[message.member.id] = true;
-                    listenStream(connection, message);
+                async function manageListens(value, key){
+                    if (!listenOn[key]){
+                        listenOn[key] = true;
+                        listenStream(connection, message, value);
+                    }
                 }
+                message.member.voice.channel.members.forEach(manageListens);
             });
         }
         catch (error){
