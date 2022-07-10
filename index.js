@@ -541,7 +541,7 @@ async function listenStream(connection, message, member) {
 //adds emitter event if bot ever disconnects from server
 async function setupConnection(connection, message){
     connections[message.guild.id] = connection;
-    connections[message.guild.id].setMaxListeners(1)
+    connections[message.guild.id]
     .on("disconnect", () => {
         emitter.emit("off", message);
     });
@@ -562,7 +562,6 @@ client.on("message", async (message) => {
     //test ping
     if (keyword == "test"){
         const server = servers[message.guild.id]; 
-
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
