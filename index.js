@@ -634,6 +634,7 @@ client.on("message", async (message) => {
             };
         }
         try{
+            const server = servers[message.guild.id];
             message.member.voice.channel.join().then((connection) =>{
                 if (!server.connection)
                     setupConnection(connection, message);
@@ -867,7 +868,7 @@ client.on("message", async (message) => {
                 currentSong: ""
             };
         }
-        
+        const server = servers[message.guild.id];
         if (transcribeOn){
             message.channel.send("Transcribe is already on!");
             return;
