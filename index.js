@@ -29,8 +29,7 @@ var servers = {};
 //global variable to manage listening and connections
 var listenOn = [];
 
-//global variables and methods for transcribe
-var transcribeOn = false;
+//global variable for transcribe function
 var emitter = new events();
 
 const client = new Client({
@@ -44,7 +43,8 @@ client.once("ready", () => {
 });
 //activates when typing ?complete or discord bot disconnects
 emitter.on("off", async (message) => {
-    if (transcribeOn){
+    const server = servers[message.guild.id];
+    if (server.transcribing){
         try{
             await message.channel.send({
                 files: [{attachment: "transcript_" + message.guild.name + ".txt"}]
@@ -55,7 +55,7 @@ emitter.on("off", async (message) => {
             message.channel.send("Error sending transcript.");
             console.log(error);
         }
-        transcribeOn = false;
+        server.transcribing = false;
     }
 });
 
@@ -67,7 +67,8 @@ async function texttomp3(text, message, languageCode) {
                 queue: [],
                 queueString: [],
                 currentSong: "",
-                connection: ""
+                connection: "",
+                transcribing: false
             };
         }
         const server = servers[message.guild.id];
@@ -282,7 +283,7 @@ async function listenStream(connection, message, member) {
                     keyword = tokens.shift().toLowerCase();
 
                     if (keyword == "complete"){
-                        if (!transcribeOn){
+                        if (!server.transcribing){
                             message.channel.send("Please start transcription first!");
                         }
                         else{
@@ -435,7 +436,7 @@ async function listenStream(connection, message, member) {
                         }
                     }
                     else if (keyword == "transcribe"){
-                        if (transcribeOn){
+                        if (server.transcribing){
                             message.channel.send("Transcribe is already on!");
                         }
                         else{
@@ -460,7 +461,7 @@ async function listenStream(connection, message, member) {
                             }
                             try{
                                 message.channel.send("Starting transcription.");
-                                transcribeOn = true;
+                                server.transcribing = true;
                                 async function manageListens(value, key){
                                     if (!listenOn[key]){
                                         listenOn[key] = true;
@@ -503,7 +504,7 @@ async function listenStream(connection, message, member) {
                         }
                     }
                 }
-                if (transcribeOn){
+                if (server.transcribing){
                     if (transcription != ""){
                         const date = new Date();
                         const member = message.member.user.username;
@@ -568,7 +569,8 @@ client.on("message", async (message) => {
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
-        if (!transcribeOn){
+        const server = servers[message.guild.id];
+        if (!server.transcribing){
             message.channel.send("Please start transcription first!");
             return;
         }
@@ -632,7 +634,9 @@ client.on("message", async (message) => {
             servers[message.guild.id] = {
                 queue: [],
                 queueString: [],
-                currentSong: ""
+                currentSong: "",
+                connection: "",
+                transcribing: false
             };
         }
         try{
@@ -676,7 +680,9 @@ client.on("message", async (message) => {
             servers[message.guild.id] = {
                 queue: [],
                 queueString: [],
-                currentSong: ""
+                currentSong: "",
+                connection: "",
+                transcribing: false
             };
         }
 
@@ -867,11 +873,13 @@ client.on("message", async (message) => {
             servers[message.guild.id] = {
                 queue: [],
                 queueString: [],
-                currentSong: ""
+                currentSong: "",
+                connection: "",
+                transcribing: false
             };
         }
         const server = servers[message.guild.id];
-        if (transcribeOn){
+        if (server.transcribing){
             message.channel.send("Transcribe is already on!");
             return;
         }
@@ -901,7 +909,7 @@ client.on("message", async (message) => {
                 if (!server.connection)
                     setupConnection(connection, message);
                 message.channel.send("Starting transcription.");
-                transcribeOn = true;
+                server.transcribing = true;
                 async function manageListens(value, key){
                     if (!listenOn[key]){
                         listenOn[key] = true;
