@@ -28,7 +28,6 @@ var servers = {};
 
 //global variable to manage listening and connections
 var listenOn = [];
-var connections = [];
 
 //global variables and methods for transcribe
 var transcribeOn = false;
@@ -67,7 +66,8 @@ async function texttomp3(text, message, languageCode) {
             servers[message.guild.id] = {
                 queue: [],
                 queueString: [],
-                currentSong: ""
+                currentSong: "",
+                connection: ""
             };
         }
         const server = servers[message.guild.id];
@@ -83,8 +83,9 @@ async function texttomp3(text, message, languageCode) {
                 fs.writeFileSync("output_" + message.guild.name + ".mp3", response.audioContent, "binary");
 
                 message.member.voice.channel.join().then((connection) => {
-                    connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
-                    server.dispatcher = connection.play("output_" + message.guild.name + ".mp3");
+                    if (!server.connection)
+                        setupConnection(connection, message);
+                    server.dispatcher = server.connection.play("output_" + message.guild.name + ".mp3");
                     server.dispatcher.setVolume(0.08);
 
                     //statement runs once mp3 file is finished  
@@ -329,8 +330,9 @@ async function listenStream(connection, message, member) {
                                     
                                     if (!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
                                         message.member.voice.channel.join().then((connection) => {
-                                            connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
-                                            play(connection, message);
+                                            if (!server.connection)
+                                                setupConnection(connection, message);
+                                            play(server.connection, message);
                                         });
                                     }
                                     else{
@@ -419,8 +421,7 @@ async function listenStream(connection, message, member) {
                             if(!(server.queue.length == 0)){
                                 try{
                                     message.member.voice.channel.join().then((connection) => {
-                                        connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
-                                        play(connection, message);
+                                        play(server.connection, message);
                                     });
                                 }
                                 catch (error){
@@ -540,12 +541,12 @@ async function listenStream(connection, message, member) {
 
 //adds emitter event if bot ever disconnects from server
 async function setupConnection(connection, message){
-    connections[message.guild.id] = connection;
-    connections[message.guild.id]
+    const server = servers[message.guild.id];
+    server.connection  = connection;
+    server.connection
     .on("disconnect", () => {
         emitter.emit("off", message);
     });
-    return connections[message.guild.id];
 }
 
 //checking any message that is sent
@@ -634,11 +635,12 @@ client.on("message", async (message) => {
         }
         try{
             message.member.voice.channel.join().then((connection) =>{
-                connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
+                if (!server.connection)
+                    setupConnection(connection, message);
                 async function manageListens(value, key){
                     if (!listenOn[key]){
                         listenOn[key] = true;
-                        listenStream(connection, message, value);
+                        listenStream(server.connection, message, value);
                     }
                 }
                 message.member.voice.channel.members.forEach(manageListens);
@@ -711,8 +713,9 @@ client.on("message", async (message) => {
             try{
                 if (!message.member.voice.channel.members.get("829383202916532314") || !server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
                     message.member.voice.channel.join().then((connection) => {
-                        connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
-                        play(connection, message);
+                        if (!server.connection)
+                            setupConnection(connection, message);
+                        play(server.connection, message);
                     });
                 }
                 else{
@@ -817,8 +820,7 @@ client.on("message", async (message) => {
             if(!(server.queue.length == 0)){
                 try{
                     message.member.voice.channel.join().then((connection) => {
-                        connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
-                        play(connection, message);
+                        play(server.connection, message);
                     });
                 }
                 catch (error){
@@ -893,13 +895,14 @@ client.on("message", async (message) => {
                     console.log(error);
                 }
 
-                connections[message.guild.id] ? connection = connections[message.guild.id] : connection = setupConnection(connection, message);
+                if (!server.connection)
+                    setupConnection(connection, message);
                 message.channel.send("Starting transcription.");
                 transcribeOn = true;
                 async function manageListens(value, key){
                     if (!listenOn[key]){
                         listenOn[key] = true;
-                        listenStream(connection, message, value);
+                        listenStream(server.connection, message, value);
                     }
                 }
                 message.member.voice.channel.members.forEach(manageListens);
