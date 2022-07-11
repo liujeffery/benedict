@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@discordjs/builders": "^0.11.0",
-    "@discordjs/opus": "^0.5.3",
+    "@discordjs/opus": "^0.8.0",
     "@discordjs/rest": "^0.2.0-canary.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@google-cloud/speech": "^4.10.2",
@@ -26,6 +26,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "libsodium-wrappers": "^0.7.10",
     "lyrics-finder": "^21.7.0",
+    "npm-check-updates": "^15.2.6",
     "utf-8-validate": "^5.0.9",
     "ytdl-core": "^4.11.0",
     "ytpl": "^2.3.0"
