@@ -546,6 +546,8 @@ async function setupConnection(connection, message){
     server.connection
     .on("disconnect", () => {
         emitter.emit("off", message);
+        server.connection = undefined;
+        server.queue = [];
     });
 }
 
