@@ -27,6 +27,7 @@ var ytlink = "";
 var servers = {};
 
 //global variable to manage listening and connections
+//for values inside array, 0 || null = have not declared state, 1 = listening, 2 = ignoring
 var listenOn = [];
 
 //global variable for transcribe function
@@ -41,6 +42,7 @@ client.once("ready", () => {
     console.log("Logged in " + version);
     client.user.setPresence({activity: {name: "? for commands | ?help"}});
 });
+
 //activates when typing ?complete or discord bot disconnects
 emitter.on("off", async (message) => {
     const server = servers[message.guild.id];
@@ -73,7 +75,7 @@ async function texttomp3(text, message, languageCode) {
         }
         const server = servers[message.guild.id];
 
-        if (!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 0)){
+        if ((!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 0)) && checkUserChannelValid(message)){
             try{
                 const request = {
                     input: {text: text},
@@ -95,7 +97,7 @@ async function texttomp3(text, message, languageCode) {
                         fs.unlinkSync("output_" + message.guild.name + ".mp3");
                         setTimeout(() => {
                         if (server.queue[0]) {
-                            play(connection, message);
+                            play(server.connection, message);
                         }
                     }, 1000)
                     });
@@ -145,7 +147,8 @@ function play(connection, message) {
                 play(connection, message);
             }
             else{
-                message.member.voice.channel.leave();
+                if (!server.transcribing)
+                    message.member.voice.channel.leave();
             }
         }, 1000)
         });
@@ -258,7 +261,7 @@ async function listenStream(connection, message, member) {
             console.log(error);
         })
         .on("end", async () =>{
-            if(listenOn[member.id]){
+            if(listenOn[member.id] == 1){
                 const request = {
                     config: {
                         encoding: "LINEAR16",
@@ -306,10 +309,10 @@ async function listenStream(connection, message, member) {
                         }
                     }
                     else if(keyword == "ignore"){
-                        if (!listenOn[message.member.id])
+                        if (listenOn[message.member.id] == 2)
                             message.channel.send("Bot is already ignoring you!");
                         else{
-                            listenOn[mesP534sage.member.id] = false;
+                            listenOn[message.member.id] = 2;
                             message.channel.send("Stopped listening to **" + message.member.user.username + "**.");
                         }
                     }
@@ -465,7 +468,7 @@ async function listenStream(connection, message, member) {
                                 server.transcribing = true;
                                 async function manageListens(value, key){
                                     if (!listenOn[key] && !value.user.bot){
-                                        listenOn[key] = true;
+                                        listenOn[key] = 1;
                                         listenStream(connection, message, value);
                                     }
                                 }
@@ -508,7 +511,7 @@ async function listenStream(connection, message, member) {
                 if (server.transcribing){
                     if (transcription != ""){
                         const date = new Date();
-                        const member = message.member.user.username;
+                        const member = member.user.username;
                         var [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
 
                         if (seconds < 10)
@@ -549,7 +552,7 @@ async function setupConnection(connection, message){
     .on("disconnect", () => {
         emitter.emit("off", message);
         server.connection = undefined;
-        server.queue = [];
+        server.queue = server.queueString = [];
     });
 }
 
@@ -566,7 +569,7 @@ client.on("message", async (message) => {
 
     //test ping
     if (keyword == "test"){
-        const server = servers[message.guild.id]; 
+        const server = servers[message.guild.id];
     }
     //if transcribing, stops transcription and sends text file
     else if (keyword == "complete"){
@@ -619,11 +622,11 @@ client.on("message", async (message) => {
         channel.send(helpMessage);
     }
     else if (keyword == "ignore"){
-        if (!listenOn[message.member.id]){
+        if (listenOn[message.member.id] == 2){
             message.channel.send("Bot is already ignoring you!");
             return;
         }
-        listenOn[message.member.id] = false;
+        listenOn[message.member.id] = 2;
         message.channel.send("Stopped listening to **" + message.member.user.username + "**.");
     }
 
@@ -645,9 +648,12 @@ client.on("message", async (message) => {
             message.member.voice.channel.join().then((connection) =>{
                 if (!server.connection)
                     setupConnection(connection, message);
+                //manaully forces bot to listen to user
+                listenOn[message.member.id] = 1;
+                //function for adding listen requests to all members in channel
                 async function manageListens(value, key){
                     if (!listenOn[key] && !value.user.bot){
-                        listenOn[key] = true;
+                        listenOn[key] = 1;
                         listenStream(server.connection, message, value);
                     }
                 }
@@ -913,7 +919,7 @@ client.on("message", async (message) => {
                 server.transcribing = true;
                 async function manageListens(value, key){
                     if (!listenOn[key] && !value.user.bot){
-                        listenOn[key] = true;
+                        listenOn[key] = 1;
                         listenStream(server.connection, message, value);
                     }
                 }
