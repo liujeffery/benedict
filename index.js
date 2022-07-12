@@ -275,7 +275,7 @@ async function listenStream(connection, message, member) {
                     .map(result => result.alternatives[0].transcript)
                     .join("\n");
                 console.log("Transcription: " + transcription);
-                
+
                 const server = servers[message.guild.id]; 
                 const tokens = transcription.trim().split(" ");
                 var keyword = tokens.shift().toLowerCase();
@@ -464,7 +464,7 @@ async function listenStream(connection, message, member) {
                                 message.channel.send("Starting transcription.");
                                 server.transcribing = true;
                                 async function manageListens(value, key){
-                                    if (!listenOn[key]){
+                                    if (!listenOn[key] && !value.user.bot){
                                         listenOn[key] = true;
                                         listenStream(connection, message, value);
                                     }
@@ -646,7 +646,7 @@ client.on("message", async (message) => {
                 if (!server.connection)
                     setupConnection(connection, message);
                 async function manageListens(value, key){
-                    if (!listenOn[key]){
+                    if (!listenOn[key] && !value.user.bot){
                         listenOn[key] = true;
                         listenStream(server.connection, message, value);
                     }
@@ -912,7 +912,7 @@ client.on("message", async (message) => {
                 message.channel.send("Starting transcription.");
                 server.transcribing = true;
                 async function manageListens(value, key){
-                    if (!listenOn[key]){
+                    if (!listenOn[key] && !value.user.bot){
                         listenOn[key] = true;
                         listenStream(server.connection, message, value);
                     }
