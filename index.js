@@ -538,7 +538,7 @@ async function listenStream(connection, message, member) {
                 listenStream(connection, message, member);
             }
         })
-        .save("ffmpeg_" + message.member.user.username + ".wav");
+        .save("ffmpeg_" + member.user.username + ".wav");
 }
 
 //adds emitter event if bot ever disconnects from server
