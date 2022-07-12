@@ -511,7 +511,7 @@ async function listenStream(connection, message, member) {
                 if (server.transcribing){
                     if (transcription != ""){
                         const date = new Date();
-                        const member = member.user.username;
+                        const memberName = member.user.username;
                         var [hour, minutes, seconds] = [date.getHours(), date.getMinutes(), date.getSeconds()];
 
                         if (seconds < 10)
@@ -522,7 +522,7 @@ async function listenStream(connection, message, member) {
                             hour = "0" + hour;
                         const timestamp = "(" + hour + ":" + minutes + ":" + seconds + ")";
                         try{
-                            fs.writeFileSync("transcript_" + message.guild.name + ".txt", member + " " + timestamp + ": " + transcription + "\n", {flag: "a"});
+                            fs.writeFileSync("transcript_" + message.guild.name + ".txt", memberName + " " + timestamp + ": " + transcription + "\n", {flag: "a"});
 
                         }
                         catch (error){
