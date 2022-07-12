@@ -650,6 +650,7 @@ client.on("message", async (message) => {
                     setupConnection(connection, message);
                 //manaully forces bot to listen to user
                 listenOn[message.member.id] = 1;
+                listenStream(server.connection, message, message.member);
                 //function for adding listen requests to all members in channel
                 async function manageListens(value, key){
                     if (!listenOn[key] && !value.user.bot){
