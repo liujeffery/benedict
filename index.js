@@ -277,7 +277,7 @@ async function listenStream(connection, message, member) {
                 const transcription = response.results
                     .map(result => result.alternatives[0].transcript)
                     .join("\n");
-                console.log("Transcription: " + transcription);
+                console.log(member.user.username + ": " + transcription);
 
                 const server = servers[message.guild.id]; 
                 const tokens = transcription.trim().split(" ");
