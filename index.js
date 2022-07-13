@@ -414,7 +414,7 @@ async function listenStream(connection, message, member) {
                         }
                     }
                     else if (keyword == "skip"){
-                        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher && server.dispatcher._writableState.writing){
+                        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher){
                             try{
                                 server.dispatcher.end();
                                 message.channel.send("Skipped!");
@@ -423,7 +423,7 @@ async function listenStream(connection, message, member) {
                                 message.channel.send("Error skipping song.");
                                 console.log(error);
                             }
-                            if(!(server.queue.length == 0)){
+                            if(server.queue.length != 0){
                                 try{
                                     message.member.voice.channel.join().then((connection) => {
                                         play(server.connection, message);
@@ -728,7 +728,7 @@ client.on("message", async (message) => {
             //joins and starts playing if bot isn't already playing
             //bot has unique, constant id
             try{
-                if (!message.member.voice.channel.members.get("829383202916532314") || !server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
+                if (message.member.voice.channel.members.get("829383202916532314") || !server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
                     message.member.voice.channel.join().then((connection) => {
                         if (!server.connection)
                             setupConnection(connection, message);
@@ -825,7 +825,7 @@ client.on("message", async (message) => {
     }
     else if (keyword == "skip"){
         const server = servers[message.guild.id];
-        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher && server.dispatcher._writableState.writing){
+        if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher){
             try{
                 server.dispatcher.end();
                 message.channel.send("Skipped!");
@@ -834,7 +834,7 @@ client.on("message", async (message) => {
                 message.channel.send("Error skipping song.");
                 console.log(error);
             }
-            if(!(server.queue.length == 0)){
+            if(server.queue.length != 0){
                 try{
                     message.member.voice.channel.join().then((connection) => {
                         play(server.connection, message);
