@@ -728,7 +728,7 @@ client.on("message", async (message) => {
             //joins and starts playing if bot isn't already playing
             //bot has unique, constant id
             try{
-                if (message.member.voice.channel.members.get("829383202916532314") || !server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
+                if (!message.member.voice.channel.members.get("829383202916532314") || !server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
                     message.member.voice.channel.join().then((connection) => {
                         if (!server.connection)
                             setupConnection(connection, message);
