@@ -49,9 +49,9 @@ emitter.on("off", async (message) => {
     if (server.transcribing){
         try{
             await message.channel.send({
-                files: [{attachment: "transcript_" + message.guild.name + ".txt"}]
+                files: [{attachment: "transcript_" + message.guild.id + ".txt"}]
             });
-            fs.unlinkSync("transcript_" + message.guild.name + ".txt");
+            fs.unlinkSync("transcript_" + message.guild.id + ".txt");
         }
         catch (error){
             message.channel.send("Error sending transcript.");
@@ -83,18 +83,18 @@ async function texttomp3(text, message, languageCode) {
                     audioConfig: {audioEncoding: "MP3"}
                 };
                 const [response] = await tts.synthesizeSpeech(request);
-                fs.writeFileSync("output_" + message.guild.name + ".mp3", response.audioContent, "binary");
+                fs.writeFileSync("output_" + message.guild.id + ".mp3", response.audioContent, "binary");
 
                 message.member.voice.channel.join().then((connection) => {
                     if (!server.connection)
                         setupConnection(connection, message);
-                    server.dispatcher = server.connection.play("output_" + message.guild.name + ".mp3");
+                    server.dispatcher = server.connection.play("output_" + message.guild.id + ".mp3");
                     server.dispatcher.setVolume(0.08);
 
                     //statement runs once mp3 file is finished  
                     //for some reason ffmpeg ends it early, so manual delay of 1 second is set
                     server.dispatcher.streams.ffmpeg.once("end", () => {
-                        fs.unlinkSync("output_" + message.guild.name + ".mp3");
+                        fs.unlinkSync("output_" + message.guild.id + ".mp3");
                         setTimeout(() => {
                         if (server.queue[0]) {
                             play(server.connection, message);
@@ -123,6 +123,7 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
+            itag: "250",
             opusEncoded: false,
             fmt: "mp3",
             encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"]
@@ -269,7 +270,7 @@ async function listenStream(connection, message, member) {
                         languageCode: "en-US"
                     },
                     audio: {
-                        content: fs.readFileSync("ffmpeg_" + member.user.username + ".wav").toString("base64")
+                        content: fs.readFileSync("ffmpeg_" + member.user.id + ".wav").toString("base64")
                     }
                 };
 
@@ -403,8 +404,13 @@ async function listenStream(connection, message, member) {
                             const searchText = tokens.join("+");
                             try{
                                 axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                                    const output = response.data.itemListElement[0].result.detailedDescription.articleBody;
-                                    texttomp3(output, message, "zh");
+                                    if (response.data.itemListElement[0]){
+                                        const output = response.data.itemListElement[0].result.detailedDescription.articleBody;
+                                        texttomp3(output, message, "zh");
+                                    }
+                                    else{
+                                        message.channel.send("Could not find a search response!");
+                                    }
                                 });
                             }
                             catch (error){
@@ -457,7 +463,7 @@ async function listenStream(connection, message, member) {
                             const fullDate = day + "/" + month + "/" + year + ", " + hour + ":" + minutes + ":" + seconds;
 
                             try{
-                                fs.writeFileSync("transcript_" + message.guild.name + ".txt", "Transcript started at " + fullDate + ".", {flag: "a"});
+                                fs.writeFileSync("transcript_" + message.guild.id + ".txt", "Transcript started at " + fullDate + ".", {flag: "a"});
                             }
                             catch (error){
                                 message.channel.send("Error starting transcription.");
@@ -522,7 +528,7 @@ async function listenStream(connection, message, member) {
                             hour = "0" + hour;
                         const timestamp = "(" + hour + ":" + minutes + ":" + seconds + ")";
                         try{
-                            fs.writeFileSync("transcript_" + message.guild.name + ".txt", memberName + " " + timestamp + ": " + transcription + "\n", {flag: "a"});
+                            fs.writeFileSync("transcript_" + message.guild.id + ".txt", memberName + " " + timestamp + ": " + transcription + "\n", {flag: "a"});
 
                         }
                         catch (error){
@@ -532,7 +538,7 @@ async function listenStream(connection, message, member) {
                     }
                 }
                 try{
-                    fs.unlinkSync("ffmpeg_" + member.user.username + ".wav");
+                    fs.unlinkSync("ffmpeg_" + member.user.id + ".wav");
                 }
                 catch (error){
                     message.channel.send("Error deleting audio file.");
@@ -541,7 +547,7 @@ async function listenStream(connection, message, member) {
                 listenStream(connection, message, member);
             }
         })
-        .save("ffmpeg_" + member.user.username + ".wav");
+        .save("ffmpeg_" + member.user.id + ".wav");
 }
 
 //adds emitter event if bot ever disconnects from server
@@ -815,7 +821,10 @@ client.on("message", async (message) => {
         const searchText = tokens.join("+");
         try{
             axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                message.channel.send(response.data.itemListElement[0].result.detailedDescription.articleBody);
+                if (response.data.itemListElement[0])
+                    message.channel.send(response.data.itemListElement[0].result.detailedDescription.articleBody);
+                else
+                    message.channel.send("Could not find a search response!");
             });
         }
         catch (error){
@@ -907,7 +916,7 @@ client.on("message", async (message) => {
                 const fullDate = day + "/" + month + "/" + year + ", " + hour + ":" + minutes + ":" + seconds;
                     
                 try{
-                    fs.writeFileSync("transcript_" + message.guild.name + ".txt", "Transcript started at " + fullDate + ".\n", {flag: "a"});
+                    fs.writeFileSync("transcript_" + message.guild.id + ".txt", "Transcript started at " + fullDate + ".\n", {flag: "a"});
                 }
                 catch (error){
                     message.channel.send("Error starting transcription.");
