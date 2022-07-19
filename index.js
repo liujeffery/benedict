@@ -404,7 +404,7 @@ async function listenStream(connection, message, member) {
                             const searchText = tokens.join("+");
                             try{
                                 axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                                    if (response.data.itemListElement[0]){
+                                    if (response.data.itemListElement[0] && response.data.itemListElement[0].result.detailedDescription){
                                         const output = response.data.itemListElement[0].result.detailedDescription.articleBody;
                                         texttomp3(output, message, "zh");
                                     }
@@ -821,7 +821,7 @@ client.on("message", async (message) => {
         const searchText = tokens.join("+");
         try{
             axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                if (response.data.itemListElement[0])
+                if (response.data.itemListElement[0] && response.data.itemListElement[0].result.detailedDescription)
                     message.channel.send(response.data.itemListElement[0].result.detailedDescription.articleBody);
                 else
                     message.channel.send("Could not find a search response!");
