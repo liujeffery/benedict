@@ -123,10 +123,11 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            itag: "250",
+            itag: "251",
             opusEncoded: false,
             fmt: "mp3",
-            encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"]
+            encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"],
+            dlChunkSize: 262144
         }), {type: "unknown"});
     }
     catch (error){
