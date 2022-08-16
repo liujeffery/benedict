@@ -1,7 +1,4 @@
-const { Client, Intents, version, MessageReaction} = require("discord.js");
-const { Translate } = require("@google-cloud/translate").v2;
-const textToSpeech = require("@google-cloud/text-to-speech");
-const speech = require("@google-cloud/speech");
+const { Client, Intents, version} = require("discord.js");
 const axios = require("axios");
 const ytdl = require("ytdl-core");
 const ytpl = require("ytpl");
@@ -10,13 +7,18 @@ const Ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const events = require("events").EventEmitter;
 const lyricsFinder = require("lyrics-finder");
+const stt = require("stt");
+const sox = require("sox-stream");
+const MemoryStream = require("memory-stream");
+const Duplex = require("stream").Duplex;
+const gtts = require("gtts");
+const { translate } = require('free-translate');
 require("dotenv").config();
 
-const projectId = "angular-unison-338316"
-const keyFilename = "angular-unison-338316-0c8e7e275407.json"
-const translate = new Translate({projectId, keyFilename});
-const tts = new textToSpeech.TextToSpeechClient({projectId, keyFilename});
-const stt = new speech.SpeechClient({projectId, keyFilename});
+const ytSearch = require("youtube-search-without-api-key");
+
+const model = new stt.Model("./speechToText/model.tflite");
+model.enableExternalScorer("./speechToText/deepspeech-0.9.3-models.scorer");
 
 //global variables for searching on youtube
 var ytcounter = 0;
@@ -62,7 +64,7 @@ emitter.on("off", async (message) => {
 });
 
 //function to convert a string to mp3 using google's text-to-speech API
-async function texttomp3(text, message, languageCode) {
+async function texttomp3(text, message) {
     if (checkUserChannelValid(message)){
         if (!servers[message.guild.id]){
             servers[message.guild.id] = {
@@ -77,14 +79,13 @@ async function texttomp3(text, message, languageCode) {
 
         if ((!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 0)) && checkUserChannelValid(message)){
             try{
-                const request = {
-                    input: {text: text},
-                    voice: {languageCode: languageCode, ssmlGender: "MALE"},
-                    audioConfig: {audioEncoding: "MP3"}
-                };
-                const [response] = await tts.synthesizeSpeech(request);
-                fs.writeFileSync("output_" + message.guild.id + ".mp3", response.audioContent, "binary");
-
+                const tts = new gtts(text, "en");
+                tts.save("output_" + message.guild.id + ".mp3", error => {
+                    if (error){
+                        message.channel.send("Error converting from text to speech.");
+                        console.log(error);
+                    }
+                });
                 message.member.voice.channel.join().then((connection) => {
                     if (!server.connection)
                         setupConnection(connection, message);
@@ -123,7 +124,7 @@ function play(connection, message) {
     try{
         server.dispatcher = connection.play(ytdl(server.queue[0], {
             filter: "audioonly",
-            itag: "251",
+            itag: "250",
             opusEncoded: false,
             fmt: "mp3",
             encoderArgs: ["-af", "bass=g=10,dynaudnorm=f=200"],
@@ -196,13 +197,12 @@ async function findLyrics(tokens, message){
 //dedicated function to search for videos on youtube
 async function youtubeSearch(search, message){
     try{
-        axios.get("https://www.googleapis.com/youtube/v3/search?q=" + search + "&part=snippet&type=video&maxResults=10&key=" + process.env.GOOGLE_KEY).then((response) => {
-            const video = response.data.items[ytcounter];
-            ytlink = "https://www.youtube.com/watch?v=" + video.id.videoId;
-            ytsearch  = search;
+        const response = await ytSearch.search(search);
+        const video = response[ytcounter];
+        ytlink = video.url;
+        ytsearch  = search;
 
-            message.channel.send("Title of video is "  + video.snippet.title + " by " + video.snippet.channelTitle + ". Is this correct? (?y/?n)");
-        });
+        message.channel.send("Title of video is "  + video.title + ". Is this correct? (?y/?n)");
     }
     catch (error){
         message.channel.send("Error searching through youtube");
@@ -212,12 +212,12 @@ async function youtubeSearch(search, message){
 
 function minuteLeft(message) {
     const output = "One minute left!";
-    texttomp3(output, message, "zh");
+    texttomp3(output, message);
 }
 
 function timeUp(message) {
     const output = "Time is up!";
-    texttomp3(output, message, "zh");
+    texttomp3(output, message);
 }
 
 //checks if sender of message is in a voice channel that is appropriate for bot
@@ -264,23 +264,42 @@ async function listenStream(connection, message, member) {
         })
         .on("end", async () =>{
             if(listenOn[member.id] == 1){
-                const request = {
-                    config: {
-                        encoding: "LINEAR16",
-                        sampleRateHertz: 48000,
-                        languageCode: "en-US"
+                const buffer = fs.readFileSync("ffmpeg_" + member.user.id + ".wav");
+
+                function bufferToStream(buffer) {
+                    let stream = new Duplex();
+                    stream.push(buffer);
+                    stream.push(null);
+                    return stream;
+                }
+
+                let audioStream = new MemoryStream();
+                bufferToStream(buffer).
+                pipe(sox({
+                    global: {
+                        'no-dither': true,
                     },
-                    audio: {
-                        content: fs.readFileSync("ffmpeg_" + member.user.id + ".wav").toString("base64")
+                    output: {
+                        bits: 16,
+                        rate: 16000,
+                        channels: 1,
+                        encoding: 'signed-integer',
+                        endian: 'little',
+                        compression: 0.0,
+                        type: 'wav'
                     }
-                };
+                })).
+                pipe(audioStream);
 
-                const [response] = await stt.recognize(request);
-                const transcription = response.results
-                    .map(result => result.alternatives[0].transcript)
-                    .join("\n");
-                console.log(member.user.username + ": " + transcription);
+                var transcription = "";
 
+                audioStream.on('finish', () => {
+                    let audioBuffer = audioStream.toBuffer();
+                    transcription = model.stt(audioBuffer);
+                    console.log(member.user.username + ": " + transcription);
+                    
+                });
+                
                 const server = servers[message.guild.id]; 
                 const tokens = transcription.trim().split(" ");
                 var keyword = tokens.shift().toLowerCase();
@@ -327,25 +346,25 @@ async function listenStream(connection, message, member) {
                         }
                         else{
                             try{
-                                axios.get("https://www.googleapis.com/youtube/v3/search?q=" + tokens.join("+") + "&part=snippet&type=video&maxResults=10&key=" + process.env.GOOGLE_KEY).then((response) => {
-                                    const video = response.data.items[0];
-                                    const link = "https://www.youtube.com/watch?v=" + video.id.videoId;
-                                    const title = video.snippet.title;
+                                var response = await ytSearch.search(tokens.join(" "));
+                                
+                                const link = response[0].url;
+                                const title = response[0].title;
 
-                                    server.queue.push(link);
-                                    server.queueString.push(title);
-                                    
-                                    if (!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
-                                        message.member.voice.channel.join().then((connection) => {
-                                            if (!server.connection)
-                                                setupConnection(connection, message);
-                                            play(server.connection, message);
-                                        });
-                                    }
-                                    else{
-                                        message.channel.send("Queued **" + server.queueString[server.queueString.length - 1] + "**.");
-                                    }
-                                });
+                                server.queue.push(link);
+                                server.queueString.push(title);
+                                
+                                if (!server.dispatcher || (!server.dispatcher._writableState.writing && server.queue.length == 1)){
+                                    message.member.voice.channel.join().then((connection) => {
+                                        if (!server.connection)
+                                            setupConnection(connection, message);
+                                        play(server.connection, message);
+                                    });
+                                }
+                                else{
+                                    message.channel.send("Queued **" + server.queueString[server.queueString.length - 1] + "**.");
+                                }
+                                
                             }
                             catch (error) {
                                 message.channel.send("Error trying to play music.");
@@ -373,7 +392,7 @@ async function listenStream(connection, message, member) {
                             }
                             else if (tokens[0] == "last"){
                                 const [removedSong] = server.queueString.splice(server.queueString.length - 1, 1);
-                                server.queue.splice(server.queueString.length - 1, 1);
+                                server.queue.splice(server.queue.length - 1, 1);
                                 message.channel.send("Removed **" + removedSong + "**.");
                             }
                             else if (!tokens[0] || isNaN(parseInt(tokens[0]))){
@@ -397,29 +416,6 @@ async function listenStream(connection, message, member) {
                             console.log(error);
                         }
                     }   
-                    else if (keyword == "search"){
-                        if (!tokens[0]){
-                            message.channel.send("Please follow the correct format for the search function!");
-                        }
-                        else{
-                            const searchText = tokens.join("+");
-                            try{
-                                axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                                    if (response.data.itemListElement[0] && response.data.itemListElement[0].result.detailedDescription){
-                                        const output = response.data.itemListElement[0].result.detailedDescription.articleBody;
-                                        texttomp3(output, message, "zh");
-                                    }
-                                    else{
-                                        message.channel.send("Could not find a search response!");
-                                    }
-                                });
-                            }
-                            catch (error){
-                                message.channel.send("Error conducting google search.");
-                                console.log(error);
-                            }
-                        }
-                    }
                     else if (keyword == "skip"){
                         if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher){
                             try{
@@ -432,9 +428,7 @@ async function listenStream(connection, message, member) {
                             }
                             if(server.queue.length != 0){
                                 try{
-                                    message.member.voice.channel.join().then((connection) => {
-                                        play(server.connection, message);
-                                    });
+                                    play(server.connection, message);
                                 }
                                 catch (error){
                                     message.channel.send("Error playing next song.");
@@ -497,7 +491,7 @@ async function listenStream(connection, message, member) {
                                 axios.get("http://api.openweathermap.org/data/2.5/weather?q=" + city + "&units=metric&appid=" + process.env.WEATHER_TOKEN).then(resp => {
                                     const output = "The temperature is " + resp.data.main.temp + " degrees Celcius, it feels like " + resp.data.main.feels_like + " degrees Celcius, and the weather is "
                                         + resp.data.weather[0].description + ".";
-                                    texttomp3(output, message, "zh");
+                                    texttomp3(output, message);
                                 })
                                 .catch ((error) => {
                                     message.channel.send("Error searching for weather.");
@@ -559,7 +553,8 @@ async function setupConnection(connection, message){
     .on("disconnect", () => {
         emitter.emit("off", message);
         server.connection = undefined;
-        server.queue = server.queueString = [];
+        server.queue = [];
+        server.queueString = [];
     });
 }
 
@@ -611,11 +606,10 @@ client.on("message", async (message) => {
             "?lyrics to get the lyrics for the current song.\n" +
             "?lyrics (search query) to get lyrics from search.\n" +
             "?remove (number or \"last\") to remove a song in the queue at a specific place.\n\n" +
-            "?search (search query) to find definitions/descriptions on Google.\n" +
             "?ytsearch (search query) to search for videos on Youtube.\n" +
             "?weather (city name) to look up current weather in any city.\n" +
             "?timer (hours minutes seconds) to set a timer for the specified hours, minutes, and seconds.\n\n" +
-            "?translate (language to translate to) (content to translate) to translate text.\n" +
+            "?translate (language code to translate to) (content to translate) to translate text.\n" +
             "?tts (content) to make bot join channel and read content out loud.\n" +
             "?listen to make bot join and listen to ALL members.\n" +
             "?ignore to make bot stop listening to you.\n\n" +
@@ -624,7 +618,7 @@ client.on("message", async (message) => {
             "?disconnect/leave to make bot leave voice channel.\n\n" +
             "VOICE COMMANDS:\n" +
             "Keyword to activate bot is Benedict.\n" +
-            "play/queue/skip/lyrics/remove/search/weather/ignore/transcribe/complete/disconnect are all also voice activated commands.```";
+            "play/queue/skip/lyrics/remove/weather/ignore/transcribe/complete/disconnect are all also voice activated commands.```";
 
         channel.send(helpMessage);
     }
@@ -656,8 +650,10 @@ client.on("message", async (message) => {
                 if (!server.connection)
                     setupConnection(connection, message);
                 //manaully forces bot to listen to user
-                listenOn[message.member.id] = 1;
-                listenStream(server.connection, message, message.member);
+                if (listenOn[message.member.id] != 1){
+                    listenOn[message.member.id] = 1;
+                    listenStream(server.connection, message, message.member);
+                }
                 //function for adding listen requests to all members in channel
                 async function manageListens(value, key){
                     if (!listenOn[key] && !value.user.bot){
@@ -721,16 +717,19 @@ client.on("message", async (message) => {
                 await message.channel.send("Queued " + playlist.items.length + " songs from **" + playlist.title + "**.");
             }
             else{
-                await axios.get("https://www.googleapis.com/youtube/v3/search?q=" + tokens.join("?%20") + "&part=snippet&type=video&maxResults=10&key=" + process.env.GOOGLE_KEY)
-                .then((response) => {
-                    if (!ytdl.validateURL(tokens[1])){
-                        link = "https://www.youtube.com/watch?v=" + response.data.items[0].id.videoId;
-                    }
-                    title = response.data.items[0].snippet.title;
+                var response = "";
 
-                    server.queue.push(link);
-                    server.queueString.push(title);
-                });
+                if(ytdl.validateURL(link))
+                    response = await ytSearch.search(ytdl.getVideoID(link));
+                else{
+                    response = await ytSearch.search(tokens.join(" "));
+                    link = response[0].url;
+                }
+
+                title = response[0].title;
+
+                server.queue.push(link);
+                server.queueString.push(title);
             }
             //joins and starts playing if bot isn't already playing
             //bot has unique, constant id
@@ -780,7 +779,7 @@ client.on("message", async (message) => {
             }
             else if (tokens[0] == "last"){
                 const [removedSong] = server.queueString.splice(server.queueString.length - 1, 1);
-                server.queue.splice(server.queueString.length - 1, 1);
+                server.queue.splice(server.queue.length - 1, 1);
                 message.channel.send("Removed **" + removedSong + "**.");
                 return;
             }
@@ -813,26 +812,6 @@ client.on("message", async (message) => {
             console.log(error);
         }
     }
-    //searches google with keyphrase and reads off most compatible knowledge graph
-    else if (keyword == "search") {
-        if (!tokens[0]){
-            message.channel.send("Please follow the correct format for the search function!")
-            return;
-        }
-        const searchText = tokens.join("+");
-        try{
-            axios.get("https://kgsearch.googleapis.com/v1/entities:search?limit=1&indent=True&query=" + searchText + "&key=" + process.env.GOOGLE_KEY).then((response) =>{
-                if (response.data.itemListElement[0] && response.data.itemListElement[0].result.detailedDescription)
-                    message.channel.send(response.data.itemListElement[0].result.detailedDescription.articleBody);
-                else
-                    message.channel.send("Could not find a search response!");
-            });
-        }
-        catch (error){
-            message.channel.send("Error conducting google search.");
-            console.log(error);
-        }
-    }
     else if (keyword == "skip"){
         const server = servers[message.guild.id];
         if (message.member.voice.channel && message.member.voice.channel.members.get("829383202916532314") && server.dispatcher){
@@ -846,9 +825,7 @@ client.on("message", async (message) => {
             }
             if(server.queue.length != 0){
                 try{
-                    message.member.voice.channel.join().then((connection) => {
-                        play(server.connection, message);
-                    });
+                    play(server.connection, message);
                 }
                 catch (error){
                     message.channel.send("Error playing next song.");
@@ -880,7 +857,7 @@ client.on("message", async (message) => {
             return;
         }
         const text = tokens.join(" ");
-        texttomp3(text, message, "zh");
+        texttomp3(text, message);
     }
     else if (keyword == "transcribe"){
         if (!checkUserChannelValid(message)){
@@ -950,26 +927,9 @@ client.on("message", async (message) => {
         }
         try{
             var target = tokens.shift().toLowerCase();
-            const [languages] = await translate.getLanguages();
-            var isValidLanguage = false;
-
-            languages.every(language =>{
-                if (language.name.toLowerCase().includes(target)){
-                    target = language.code;
-                    isValidLanguage = true;
-                    return false;
-                }
-                return true;
-            })
-
-            if (!isValidLanguage){
-                message.channel.send("Could not find language, please try again.")
-            }
-            else{
-                const text = tokens.join(" ");
-                let [translations] = await translate.translate(text, target);
-                message.channel.send(translations.toString());
-            }
+            const text = tokens.join(" ");
+            const translation = await translate(text, {from: "en", to: target});
+            message.channel.send(translation);
         }
         catch (error){
             message.channel.send("Error translating text.");
@@ -1009,7 +969,7 @@ client.on("message", async (message) => {
             message.channel.send("Please follow the correct format for searching in youtube!");
             return;
         }
-        const search = tokens.join("%20");
+        const search = tokens.join(" ");
         youtubeSearch(search, message);
     }
     else if (keyword == "y") {
