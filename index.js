@@ -7,18 +7,13 @@ const Ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const events = require("events").EventEmitter;
 const lyricsFinder = require("lyrics-finder");
-const stt = require("stt");
-const sox = require("sox-stream");
-const MemoryStream = require("memory-stream");
-const Duplex = require("stream").Duplex;
 const gtts = require("gtts");
 const { translate } = require('free-translate');
+const ytSearch = require("youtube-search-without-api-key");
+const speech = require("@google-cloud/speech");
 require("dotenv").config();
 
-const ytSearch = require("youtube-search-without-api-key");
-
-const model = new stt.Model("./speechToText/model.tflite");
-model.enableExternalScorer("./speechToText/deepspeech-0.9.3-models.scorer");
+const stt = new speech.SpeechClient({projectId : "googleKey", keyFilename: "googleKey.json"});
 
 //global variables for searching on youtube
 var ytcounter = 0;
@@ -264,42 +259,23 @@ async function listenStream(connection, message, member) {
         })
         .on("end", async () =>{
             if(listenOn[member.id] == 1){
-                const buffer = fs.readFileSync("ffmpeg_" + member.user.id + ".wav");
-
-                function bufferToStream(buffer) {
-                    let stream = new Duplex();
-                    stream.push(buffer);
-                    stream.push(null);
-                    return stream;
-                }
-
-                let audioStream = new MemoryStream();
-                bufferToStream(buffer).
-                pipe(sox({
-                    global: {
-                        'no-dither': true,
+                const request = {
+                    config: {
+                        encoding: "LINEAR16",
+                        sampleRateHertz: 48000,
+                        languageCode: "en-US"
                     },
-                    output: {
-                        bits: 16,
-                        rate: 16000,
-                        channels: 1,
-                        encoding: 'signed-integer',
-                        endian: 'little',
-                        compression: 0.0,
-                        type: 'wav'
+                    audio: {
+                        content: fs.readFileSync("ffmpeg_" + member.user.id + ".wav").toString("base64")
                     }
-                })).
-                pipe(audioStream);
+                };
 
-                var transcription = "";
+                const [response] = await stt.recognize(request);
+                const transcription = response.results
+                    .map(result => result.alternatives[0].transcript)
+                    .join("\n");
+                console.log(member.user.username + ": " + transcription);
 
-                audioStream.on('finish', () => {
-                    let audioBuffer = audioStream.toBuffer();
-                    transcription = model.stt(audioBuffer);
-                    console.log(member.user.username + ": " + transcription);
-                    
-                });
-                
                 const server = servers[message.guild.id]; 
                 const tokens = transcription.trim().split(" ");
                 var keyword = tokens.shift().toLowerCase();
@@ -346,10 +322,10 @@ async function listenStream(connection, message, member) {
                         }
                         else{
                             try{
-                                var response = await ytSearch.search(tokens.join(" "));
+                                var ytResponse = await ytSearch.search(tokens.join(" "));
                                 
-                                const link = response[0].url;
-                                const title = response[0].title;
+                                const link = ytResponse[0].url;
+                                const title = ytResponse[0].title;
 
                                 server.queue.push(link);
                                 server.queueString.push(title);
