@@ -27,6 +27,7 @@
     "gtts": "^0.2.1",
     "libsodium-wrappers": "^0.7.10",
     "lyrics-finder": "^21.7.0",
+    "node-fetch": "^2.6.1",
     "npm-check-updates": "^15.2.6",
     "opusscript": "^0.0.8",
     "utf-8-validate": "^5.0.9",
